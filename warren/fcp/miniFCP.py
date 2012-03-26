@@ -33,9 +33,13 @@ class FCPLogger(object):
             line = line % args
         self.logfile.write(line + '\n')
 
+    __call__ = write
+
 class NullLogger(object):
     def write(self, line, *args):
         pass
+    
+    __call__ = write
 
 #exceptions
 class FCPConnectionRefused(Exception):
@@ -52,7 +56,7 @@ class FCPIOConnection(object):
         host = fcpargs.get('fcphost', DEFAULT_FCP_HOST)
         port = fcpargs.get('fcpport', DEFAULT_FCP_PORT)
         timeout = fcpargs.get('fcptimeout', DEFAULT_FCP_TIMEOUT)
-        self._logger = fcpargs.get('fcplogger', NullLogger())
+        self.log = fcpargs.get('fcplogger', NullLogger())
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
         self.socket.settimeout(timeout)
@@ -64,10 +68,6 @@ class FCPIOConnection(object):
         self.fp = self.socket.makefile()
         self.log("init: connected to %s:%s (timeout %d s)", host, port, timeout)
 
-    @property
-    def log(self):
-        return self._logger.write
-    
     def __del__(self):
         """object is getting cleaned up, so disconnect"""
         try:
