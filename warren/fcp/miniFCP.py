@@ -171,17 +171,17 @@ class FCPConnection(FCPIOConnection):
         """perform the initial FCP protocol handshake"""
         self._sendMessage("ClientHello", Name=fcpargs.get('fcpname', _getUniqueId()), ExpectedVersion=REQUIRED_FCP_VERSION)
         msg = self.readEndMessage()
-        if not msg.isMessageName("NodeHello"):
-            raise FCPException("Node helo failed: %s" % (msg.getMessageName()))
+        if msg.name != "NodeHello":
+            raise FCPException("Node helo failed: %s" % (msg.name,))
 
         # check node version
         if not fcpargs.get('fcpnoversion', False):
             reqversion = fcpargs.get('fcprequirednodeversion', REQUIRED_NODE_VERSION)
-            version = msg.getIntValue("Build")
+            version = int(msg["Build"])
             if version < reqversion:
                 raise FCPException("Node to old. Found %d, but need %d" % (version, reqversion))
             reqextversion = fcpargs.get('fcprequiredextversion', REQUIRED_EXT_VERSION)
-            extversion = msg.getIntValue("ExtBuild")
+            extversion = int(msg["ExtBuild"])
             if extversion < reqextversion:
                 raise FCPException("Node-ext to old. Found %d, but need %d" % (extversion, reqextversion))
 
@@ -223,9 +223,6 @@ class FCPCommand(object):
 
 class FCPMessage(object):
     """class for node to client messages"""
-    _items = {}
-    _messagename = ""
-    _endmarker = ""
 
     def __str__(self):
         parts = []
@@ -235,28 +232,16 @@ class FCPMessage(object):
         parts.append(self._endmarker)
         return "\n".join(parts) or "??"
 
-    def __init__(self, messagename, items, endmarker):
-        self._messagename = messagename
-        self._endmarker = endmarker
-        self._items = items 
+    def __init__(self, name, items, endmarker):
+        self.name = name
+        self.endmarker = endmarker
+        self.items = items
 
-    def isMessageName(self, testname):
-        if self._messagename in testname:
-            return True
-        else:
-            return False
-
-    def getMessageName(self):
-        return self._messagename
-
-    def getIntValue(self, name):
-        return int(self._items[name])
-
-    def getValue(self, name):
-        return self._items[name]
+    def __getitem__(self, key):
+        return self.items[key]
 
     def isDataCarryingMessage(self):
-        return self._endmarker == "DATA"
+        return self.endmarker == "DATA"
 
 # asynchronous fcp stuff (thread save)
 
@@ -287,7 +272,7 @@ class FCPConnectionRunner(Thread):
 
         while self._fcp_conn:
             msg = self._fcp_conn.readEndMessage()
-            if msg.isMessageName('CloseConnectionDuplicateClientName'):
+            if msg.name == 'CloseConnectionDuplicateClientName':
                 self.close()
             if msg.isDataCarryingMessage():
                 self._cb.onDataMessage(msg, self._fcp_conn)
@@ -399,10 +384,10 @@ class FCPJobRunner(object):
     def onMessage(self, msg):
         id = None
         try:
-            id = msg.getValue('Identifier')
+            id = msg['Identifier']
         except KeyError, ke:
-            if msg.isMessageName(['TestDDAReply', 'TestDDAComplete']):
-                id = msg.getValue('Directory')
+            if msg.name in ('TestDDAReply', 'TestDDAComplete'):
+                id = msg['Directory']
             else:
                 raise ke
         job = self._jobs.get(id)

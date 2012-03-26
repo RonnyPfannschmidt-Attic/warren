@@ -11,7 +11,7 @@ class GetConfigJob(miniFCP.FCPJob):
         self.WithExpertFlag = WithExpertFlag
 
     def onMessage(self, msg):
-        if msg.isMessageName('ConfigData'):
+        if msg.name == 'ConfigData':
             self._msg = msg
             self.setSuccess()
         else:
@@ -24,7 +24,7 @@ class GetConfigJob(miniFCP.FCPJob):
         return cmd, None
 
     def getConfig(self):
-        return self._msg._items
+        return self._msg.items
 
 class PutDirectJob(miniFCP.FCPJob):
     def __init__(self, uri, content, callback, **cmdargs):
@@ -35,27 +35,22 @@ class PutDirectJob(miniFCP.FCPJob):
         self._content = content
 
     def onMessage(self, msg):
-        if msg.isMessageName('SimpleProgress'):
+        if msg.name == 'SimpleProgress':
             self._callback.onSimpleProgress(msg)
-            return
-        if msg.isMessageName('FinishedCompression'):
+        elif msg.name == 'FinishedCompression':
             self._callback.onFinishedCompression(msg)
-            return
-        if msg.isMessageName('URIGenerated'):
+        elif msg.name == 'URIGenerated':
             self._callback.onURIGenerated(msg)
-            return
-        if msg.isMessageName('PutFetchable'):
+        elif msg.name == 'PutFetchable':
             self._callback.onPutFetchable(msg)
-            return
-        if msg.isMessageName('PutSuccessful'):
+        elif msg.name == 'PutSuccessful':
             self.setSuccess()
             self._callback.onSuccess(msg)
-            return
-        if msg.isMessageName('PutFailed'):
+        elif msg.name == 'PutFailed':
             self.setErrorMessage(msg)
             self._callback.onFailed(msg)
-            return
-        miniFCP.FCPJob.onMessage(self, msg)
+        else:
+            miniFCP.FCPJob.onMessage(self, msg)
 
     def getFCPCommand(self):
         cmd = self.makeFCPCommand('ClientPut')
@@ -84,7 +79,7 @@ class PutQueueDirectJob(miniFCP.FCPJob):
         self._content = content
 
     def onMessage(self, msg):
-        if msg.isMessageName('PersistentPut'):
+        if msg.name == 'PersistentPut':
             self.setSuccess()
             return
         miniFCP.FCPJob.onMessage(self, msg)
@@ -113,10 +108,10 @@ class DDATestJob(miniFCP.FCPJob):
         miniFCP.FCPJob.__init__(self)
 
     def onMessage(self, msg):
-        if msg.isMessageName('TestDDAReply'):
+        if msg.name == 'TestDDAReply':
             self._doDDAReply(msg)
             return
-        if msg.isMessageName('TestDDAComplete'):
+        if msg.name == 'TestDDAComplete':
             self._doDDAComplete(msg)
             return
         miniFCP.FCPJob.onMessage(self, msg)
@@ -130,8 +125,8 @@ class DDATestJob(miniFCP.FCPJob):
         self._ConnectionRunner.sendCommand(cmd, None)
 
     def _doDDAReply(self, msg):
-        dir = msg.getValue('Directory')
-        filename = msg.getValue('ReadFilename')
+        dir = msg['Directory']
+        filename = msg['ReadFilename']
 
         if not os.path.exists(filename):
             c = "file not found. no dda"
@@ -146,7 +141,7 @@ class DDATestJob(miniFCP.FCPJob):
         self._ConnectionRunner.sendCommand(cmd, None)
 
     def _doDDAComplete(self, msg):
-        readAllowed = msg.getValue('ReadDirectoryAllowed') == 'true'
+        readAllowed = msg['ReadDirectoryAllowed'] == 'true'
         self.onDDATestDone(readAllowed, False)
 
 class PutQueueFileJob(DDATestJob):
@@ -158,11 +153,11 @@ class PutQueueFileJob(DDATestJob):
         self._fcpcmd = None
 
     def onMessage(self, msg):
-        if msg.isMessageName('PersistentPut'):
+        if msg.name == 'PersistentPut':
             self.setSuccess()
             return
-        if msg.isMessageName('ProtocolError'):
-            code = msg.getIntValue('Code')
+        if msg.name == 'ProtocolError':
+            code = int(msg['Code'])
             if code == 9:
                 self._doDirect()
             elif code == 25:

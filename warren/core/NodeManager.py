@@ -170,28 +170,26 @@ class PasteInsert(QDialog):
         if clip.supportsSelection():
             clip.setText(str(self.key),QClipboard.Selection)
 
-    def messageReceived(self,msg):
-        val1 = msg[0]
-        val2 = msg[1]
-        if val1 == 'URIGenerated':
-            self.ui.keyLineEdit.setText(val2.getValue('URI'))
+    def messageReceived(self, msg):
+        if msg.name == 'URIGenerated':
+            self.ui.keyLineEdit.setText(msg['URI'])
             self.ui.keyLineEdit.setCursorPosition(0)
             self.ui.pushButton.setEnabled(True)
-            self.key = val2.getValue('URI')
-        elif val1 == 'SimpleProgress':
-            self.ui.progressBar.setMaximum(val2.getIntValue('Total'))
-            self.ui.progressBar.setValue(val2.getIntValue('Succeeded'))
-        elif val1=='PutFailed':
-            self.ui.keyLineEdit.setText('Insert Failed: '+ str(val2.getValue('CodeDescription','Unknown error')))
-        elif val1=='PutSuccessful':
+            self.key = msg['URI']
+        elif msg.name == 'SimpleProgress':
+            self.ui.progressBar.setMaximum(int(msg['Total']))
+            self.ui.progressBar.setValue(int(msg['Succeeded']))
+        elif msg.name == 'PutFailed':
+            self.ui.keyLineEdit.setText('Insert Failed: '+ str(msg.items.get('CodeDescription','Unknown error')))
+        elif msg.name == 'PutSuccessful':
             self.ui.buttonBox.buttons()[0].setEnabled(True)
             self.ui.buttonBox.buttons()[1].setEnabled(False)
             self.ui.keyLineEdit.setCursorPosition(0)
             self.pasteFinished.emit()
-        elif val1=='FinishedCompression':
+        elif msg.name == 'FinishedCompression':
             # TODO compression done
             pass
-        elif val1=='PutFetchable':
+        elif msg.name == 'PutFetchable':
             # TODO it may be ok to canel the insert, it should be still fetchable
             # tell the user
             pass
@@ -247,7 +245,7 @@ class PutPaste(QThread):
         self.node.putDirect(keyType,paste,callback,TargetFilename='pastebin',Verbosity=5,Mimetype=mimeType,PriorityClass=2)
 
     def insertcb(self,msg):
-        self.message.emit([msg.getMessageName(),msg])
+        self.message.emit(msg)
 
     def onSimpleProgress(self, msg):
         self.insertcb(msg)
