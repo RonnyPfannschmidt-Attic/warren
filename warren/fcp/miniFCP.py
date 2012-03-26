@@ -96,7 +96,7 @@ class FCPIOConnection(object):
             if not chunk:
                 raise FCPException("FCP socket closed by node")
             remaining -= chunklen
-        elf.log("in: <%s Bytes of data skipped>", n)
+        self.log("in: <%s Bytes of data skipped>", n)
 
     def close(self):
         self.log("init: closing connection")
