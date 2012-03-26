@@ -60,6 +60,8 @@ class FCPIOConnection(object):
             self.socket.connect((host, port))
         except Exception, e:
             raise FCPConnectionRefused("Failed to connect to %s:%s - %s" % (host, port, e))
+
+        self.fp = self.socket.makefile()
         self.log("init: connected to %s:%s (timeout %d s)", host, port, timeout)
 
     @property
@@ -69,42 +71,27 @@ class FCPIOConnection(object):
     def __del__(self):
         """object is getting cleaned up, so disconnect"""
         try:
-            self.socket.close()
+            self.fp.close()
         except:
             pass
 
     def _readline(self):
-        buf = []
-        while True:
-            c = self.socket.recv(1)
-            if c:
-                if c == '\n':
-                    break
-                buf.append(c)
-            else:
-                raise FCPException("FCP socket closed by node")
-        ln = "".join(buf)
-        return ln
+        line = self.fp.readline()
+        if line[-1] != '\n':
+            raise FCPException("FCP socket closed by node")
+        return line[:-1]
 
     def read(self, n):
-        chunks = []
-        remaining = n
-        while remaining > 0:
-            chunk = self.socket.recv(remaining)
-            chunklen = len(chunk)
-            if chunk:
-                chunks.append(chunk)
-            else:
-                raise FCPException("FCP socket closed by node")
-            remaining -= chunklen
-        buf = "".join(chunks)
+        buf = self.fp.read(n)
+        if len(buf) != n:
+            raise FCPException("FCP socket closed by node")
         self.log("in: <%s Bytes of data read>", len(buf))
         return buf
 
     def skip(self, n):
         remaining = n
         while remaining > 0:
-            chunk = self.socket.recv(remaining)
+            chunk = self.fp.read(min(8192, remaining))
             chunklen = len(chunk)
             if not chunk:
                 raise FCPException("FCP socket closed by node")
