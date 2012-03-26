@@ -28,8 +28,14 @@ class FCPLogger(object):
     def __init__(self, filename=None):
         self.logfile = sys.stdout
 
-    def write(self, line):
+    def write(self, line, *args):
+        if args:
+            line = line % args
         self.logfile.write(line + '\n')
+
+class NullLogger(object):
+    def write(self, line, *args):
+        pass
 
 #exceptions
 class FCPConnectionRefused(Exception):
@@ -46,7 +52,7 @@ class FCPIOConnection(object):
         host = fcpargs.get('fcphost', DEFAULT_FCP_HOST)
         port = fcpargs.get('fcpport', DEFAULT_FCP_PORT)
         timeout = fcpargs.get('fcptimeout', DEFAULT_FCP_TIMEOUT)
-        self._logger = fcpargs.get('fcplogger', None)
+        self._logger = fcpargs.get('fcplogger', NullLogger())
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
         self.socket.settimeout(timeout)
@@ -54,9 +60,12 @@ class FCPIOConnection(object):
             self.socket.connect((host, port))
         except Exception, e:
             raise FCPConnectionRefused("Failed to connect to %s:%s - %s" % (host, port, e))
-        if (None != self._logger):
-            self._logger.write("init: connected to %s:%s (timeout %d s)" % (host, port, timeout))
+        self.log("init: connected to %s:%s (timeout %d s)", host, port, timeout)
 
+    @property
+    def log(self):
+        return self._logger.write
+    
     def __del__(self):
         """object is getting cleaned up, so disconnect"""
         try:
@@ -89,8 +98,7 @@ class FCPIOConnection(object):
                 raise FCPException("FCP socket closed by node")
             remaining -= chunklen
         buf = "".join(chunks)
-        if (None != self._logger):
-            self._logger.write("in: <"+str(len(buf))+" Bytes of data read>")
+        self.log("in: <%s Bytes of data read>", len(buf))
         return buf
 
     def skip(self, n):
@@ -101,27 +109,23 @@ class FCPIOConnection(object):
             if not chunk:
                 raise FCPException("FCP socket closed by node")
             remaining -= chunklen
-        if (None != self._logger):
-            self._logger.write("in: <"+str(n)+" Bytes of data skipped>")
+        elf.log("in: <%s Bytes of data skipped>", n)
 
     def close(self):
-        if (None != self._logger):
-            self._logger.write("init: closing connection")
+        self.log("init: closing connection")
         self.socket.close()
 
     def readEndMessage(self):
         #the first line is the message name
         messagename = self._readline()
 
-        if (None != self._logger):
-            self._logger.write("in: "+messagename)
+        self.log("in: %s", messagename)
 
         items = {}
         while True:
             line = self._readline()
 
-            if (None != self._logger):
-                self._logger.write("in: "+line)
+            self.log('in: %s', line)
 
             if (len(line.strip()) == 0):
                 continue # an empty line, jump over
@@ -137,8 +141,7 @@ class FCPIOConnection(object):
         return FCPMessage(messagename, items, endmarker)
 
     def _sendLine(self, line):
-        if (None != self._logger):
-            self._logger.write("out: "+line)
+        self.log("out: %s", line)
         self.socket.sendall(line+"\n")
 
     def _sendMessage(self, messagename, hasdata=False, **kw):
@@ -162,8 +165,7 @@ class FCPIOConnection(object):
             self._sendLine("EndMessage")
 
     def _sendData(self, data):
-        if (None != self._logger):
-            self._logger.write("out: <"+str(len(data))+" Bytes of data>")
+        self.log("out: <%s Bytes of data>", len(data))
         self.socket.sendall(data)
 
 class FCPConnection(FCPIOConnection):
