@@ -355,8 +355,9 @@ class FCPJob(Thread):
         return ((not self._lastError) and (not self._lastErrorMessage))
 
     def makeFCPCommand(self, name, **kwargs):
-        cmd = FCPCommand(name, **kwargs)
-        cmd.setItem('Identifier', self.getJobIdentifier())
+        cmd = FCPCommand(name,
+                         Identifier=self.getJobIdentifier(),
+                         **kwargs)
         return cmd
 
     def run(self):

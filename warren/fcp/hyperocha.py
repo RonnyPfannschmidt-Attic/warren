@@ -18,9 +18,9 @@ class GetConfigJob(miniFCP.FCPJob):
             miniFCP.FCPJob.onMessage(self, msg)
 
     def getFCPCommand(self):
-        cmd = self.makeFCPCommand('GetConfig')
-        cmd.setItem("WithCurrent", self.WithCurrent)
-        cmd.setItem("WithExpertFlag", self.WithExpertFlag)
+        cmd = self.makeFCPCommand('GetConfig',
+                WithCurrent=self.WithCurrent,
+                WithExpertFlag=self.WithExpertFlag)
         return cmd, None
 
     def getConfig(self):
@@ -135,9 +135,9 @@ class DDATestJob(miniFCP.FCPJob):
             c = f.read()
             f.close()
 
-        cmd = miniFCP.FCPCommand("TestDDAResponse")
-        cmd.setItem('Directory', dir)
-        cmd.setItem('ReadContent', c)
+        cmd = miniFCP.FCPCommand("TestDDAResponse",
+            Directory=dir,
+            ReadContent=c)
         self._ConnectionRunner.sendCommand(cmd, None)
 
     def _doDDAComplete(self, msg):
