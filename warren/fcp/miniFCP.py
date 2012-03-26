@@ -145,14 +145,7 @@ class FCPIOConnection(object):
         self.socket.sendall(line+"\n")
 
     def _sendMessage(self, messagename, hasdata=False, **kw):
-        self._sendLine(messagename)
-        for k, v in kw.items():
-            line = k + "=" + str(v)
-            self._sendLine(line)
-        if kw.has_key("DataLength") or hasdata:
-            self._sendLine("Data")
-        else:
-            self._sendLine("EndMessage")
+        self._sendCommand(messagename, hasdata, kw)
 
     def _sendCommand(self, messagename, hasdata, kw):
         self._sendLine(messagename)
