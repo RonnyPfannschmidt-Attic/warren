@@ -71,7 +71,7 @@ class FCPIOConnection(object):
     def __del__(self):
         """object is getting cleaned up, so disconnect"""
         try:
-            self.fp.close()
+            self.close()
         except:
             pass
 
@@ -100,7 +100,9 @@ class FCPIOConnection(object):
 
     def close(self):
         self.log("init: closing connection")
+        self.fp.close()
         self.socket.close()
+
 
     def readEndMessage(self):
         #the first line is the message name
