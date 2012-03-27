@@ -128,20 +128,16 @@ class FCPIOConnection(object):
             self.log("    %r", items)
         return FCPMessage(messagename, items, endmarker)
 
-    def _sendLine(self, line):
-        #self.log("out: %s", line)
-        self.socket.sendall(line+"\n")
-
     def _sendCommand(self, messagename, hasdata, kw):
         self.log("out: %s %r", messagename, kw)
-        self._sendLine(messagename)
+        s = self.socket.sendall
+        s(messagename + '\n')
         for k, v in kw.items():
-            line = k + "=" + str(v)
-            self._sendLine(line)
-        if kw.has_key("DataLength") or hasdata:
-            self._sendLine("Data")
+            s("%s=%s\n" % (k, v))
+        if "DataLength" in kw or hasdata:
+            s("Data\n")
         else:
-            self._sendLine("EndMessage")
+            s("EndMessage\n")
 
     def _sendData(self, data):
         if hasattr(data, 'read'):
