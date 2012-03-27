@@ -112,7 +112,7 @@ class FCPIOConnection(object):
         while True:
             line = self._readline()
 
-            self.log('in: %s', line)
+            #self.log('in: %s', line)
 
             if (len(line.strip()) == 0):
                 continue # an empty line, jump over
@@ -124,17 +124,18 @@ class FCPIOConnection(object):
             # normal 'key=val' pairs left
             k, v = line.split("=", 1)
             items[k] = v
-
+        self.log("    %r", items)
         return FCPMessage(messagename, items, endmarker)
 
     def _sendLine(self, line):
-        self.log("out: %s", line)
+        #self.log("out: %s", line)
         self.socket.sendall(line+"\n")
 
     def _sendMessage(self, messagename, hasdata=False, **kw):
         self._sendCommand(messagename, hasdata, kw)
 
     def _sendCommand(self, messagename, hasdata, kw):
+        self.log("out: %s %r", messagename, kw)
         self._sendLine(messagename)
         for k, v in kw.items():
             line = k + "=" + str(v)
