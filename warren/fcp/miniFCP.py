@@ -132,9 +132,6 @@ class FCPIOConnection(object):
         #self.log("out: %s", line)
         self.socket.sendall(line+"\n")
 
-    def _sendMessage(self, messagename, hasdata=False, **kw):
-        self._sendCommand(messagename, hasdata, kw)
-
     def _sendCommand(self, messagename, hasdata, kw):
         self.log("out: %s %r", messagename, kw)
         self._sendLine(messagename)
@@ -176,7 +173,10 @@ class FCPConnection(FCPIOConnection):
 
     def _helo(self, **fcpargs):
         """perform the initial FCP protocol handshake"""
-        self._sendMessage("ClientHello", Name=fcpargs.get('fcpname', _getUniqueId()), ExpectedVersion=REQUIRED_FCP_VERSION)
+        self._sendCommand("ClientHello", False, {
+            'Name': fcpargs.get('fcpname', _getUniqueId()),
+            'ExpectedVersion': REQUIRED_FCP_VERSION,
+        })
         msg = self.readEndMessage()
         if msg.name != "NodeHello":
             raise FCPException("Node helo failed: %s" % (msg.name,))
