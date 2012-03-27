@@ -303,12 +303,9 @@ class FCPJob(object):
         self._ConnectionRunner = None
         self._JobRunner = None
         if not identifier:
-            self._identifier = _getUniqueId()
+            self.identifier = _getUniqueId()
         else:
-            self._identifier = identifier
-
-    def getJobIdentifier(self):
-        return self._identifier
+            self.identifier = identifier
 
     def prepare(self):
         """overwrite this for job preparation, collect data/files etc pp"""
@@ -325,7 +322,7 @@ class FCPJob(object):
         cmd, data = self.getFCPCommand()
         self._ConnectionRunner.sendCommand(cmd, data)
 
-    def waitForDone(self):
+    def wait(self):
         self._waitEvent.wait()
 
     def setError(self, e):
@@ -345,7 +342,7 @@ class FCPJob(object):
         return not (self._lastError or self._lastErrorMessage)
 
     def makeFCPCommand(self, name, args):
-        args['Identifier'] = self.getJobIdentifier()
+        args['Identifier'] = self.identifier
         return FCPCommand(name, args)
 
     def start(self):
@@ -363,12 +360,6 @@ class FCPJobRunner(object):
     def __init__(self):
         # map identifier -> job
         self._jobs = {}
-
-    def _registerJob(self, id, job):
-        self._jobs[id] = job
-
-    def _unregisterJob(self, jobID):
-        self._jobs.pop(jobID)
 
     def onMessage(self, msg):
         id = None
@@ -388,15 +379,15 @@ class FCPJobRunner(object):
     def runJob(self, job):
         """execute a job blocking. does not return until job is done"""
         self.startJob(job)
-        job.waitForDone()
-        self._unregisterJob(job.getJobIdentifier())
+        job.wait()
+        self._jobs.pop(job.identifier)
 
     def startJob(self, job):
         """queue a job for execution and return imadently"""
-        cr = self.getConnectionRunner(job.getJobIdentifier())
+        cr = self.getConnectionRunner(job.identifier)
         job._JobRunner = self
         job._ConnectionRunner = cr
-        self._registerJob(job.getJobIdentifier(), job)
+        self._jobs[job.identifier] = job
         job.start()
 
 class FCPSession(FCPJobRunner):
