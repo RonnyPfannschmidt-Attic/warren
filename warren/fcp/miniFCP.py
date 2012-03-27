@@ -192,7 +192,7 @@ class FCPConnection(FCPIOConnection):
             hasdata = command.hasData()
         else:
             hasdata = True
-        self._sendCommand(command.getCommandName(), hasdata, command.getItems())
+        self._sendCommand(command.name, hasdata, command.items)
         if data is not None:
             self._sendData(data)
 
@@ -202,26 +202,14 @@ class FCPConnection(FCPIOConnection):
 class FCPCommand(object):
     """class for client to node messages"""
 
-    def __init__(self, name, **cmdargs):
-        self._name = name
-        self._items = cmdargs
-        if 'Identifier' not in self._items:
-            self._items['Identifier'] = _getUniqueId()
-
-    def getCommandName(self):
-        return self._name
-
-    def getItems(self):
-        return self._items
-
-    def setItem(self, name, value):
-        self._items[name] = value
+    def __init__(self, name, items=None):
+        self.name = name
+        self.items = items or {}
+        if 'Identifier' not in self.items:
+            self.items['Identifier'] = _getUniqueId()
 
     def hasData(self):
-        if self._items.has_key("DataLength"):
-            return True
-        else:
-            return False 
+        return "DataLength" in self.items
 
 class FCPMessage(object):
     """class for node to client messages"""
@@ -353,13 +341,11 @@ class FCPJob(object):
         self._waitEvent.set()
 
     def isSuccess(self):
-        return ((not self._lastError) and (not self._lastErrorMessage))
+        return not (self._lastError or self._lastErrorMessage)
 
-    def makeFCPCommand(self, name, **kwargs):
-        cmd = FCPCommand(name,
-                         Identifier=self.getJobIdentifier(),
-                         **kwargs)
-        return cmd
+    def makeFCPCommand(self, name, args):
+        args['Identifier'] = self.getJobIdentifier()
+        return FCPCommand(name, args)
 
     def start(self):
         try:

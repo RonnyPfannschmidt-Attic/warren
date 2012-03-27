@@ -3,6 +3,16 @@ import os
 
 DEFAULT_CODEC = 'LZMA_NEW'
 
+
+def transfer_mimetype_and_name(job, cmd):
+    cmdargs = job._cmdargs
+    if 'Mimetype' in cmdargs:
+        cmd.items["Metadata.ContentType"] = cmdargs['Mimetype']
+    if 'TargetFilename' in cmdargs:
+        cmd.items["TargetFilename"] = cmdargs['TargetFilename']
+
+
+
 class GetConfigJob(miniFCP.FCPJob):
     def __init__(self, WithCurrent=False, WithExpertFlag=False):
         miniFCP.FCPJob.__init__(self)
@@ -18,9 +28,9 @@ class GetConfigJob(miniFCP.FCPJob):
             miniFCP.FCPJob.onMessage(self, msg)
 
     def getFCPCommand(self):
-        cmd = self.makeFCPCommand('GetConfig',
+        cmd = self.makeFCPCommand('GetConfig',dict(
                 WithCurrent=self.WithCurrent,
-                WithExpertFlag=self.WithExpertFlag)
+                WithExpertFlag=self.WithExpertFlag))
         return cmd, None
 
     def getConfig(self):
@@ -53,22 +63,20 @@ class PutDirectJob(miniFCP.FCPJob):
             miniFCP.FCPJob.onMessage(self, msg)
 
     def getFCPCommand(self):
-        cmd = self.makeFCPCommand('ClientPut')
-        cmd.setItem('URI', self._targetURI)
-        cmd.setItem('Verbosity', self._cmdargs.get('Verbosity', -1))
-        cmd.setItem('MaxRetries', self._cmdargs.get('MaxRetries', 3))
-        cmd.setItem('DontCompress', 'false')
-        cmd.setItem('Codecs', DEFAULT_CODEC)
-        cmd.setItem('PriorityClass', self._cmdargs.get('PriorityClass', 1))
-        cmd.setItem('Global', 'false')
-        cmd.setItem('Persistence', 'connection')
-        cmd.setItem("UploadFrom", "direct")
-        cmd.setItem("DataLength", str(len(self._content)))
-        if self._cmdargs.has_key('Mimetype'):
-            cmd.setItem("Metadata.ContentType", self._cmdargs['Mimetype'])
-        cmd.setItem("RealTimeFlag", "true")
-        if self._cmdargs.has_key('TargetFilename'):
-            cmd.setItem("TargetFilename", self._cmdargs['TargetFilename'])
+        cmd = self.makeFCPCommand('ClientPut', {
+            'URI': self._targetURI,
+            'Verbosity': self._cmdargs.get('Verbosity', -1),
+            'MaxRetries': self._cmdargs.get('MaxRetries', 3),
+            'DontCompress': 'false',
+            'Codecs': DEFAULT_CODEC,
+            'PriorityClass': self._cmdargs.get('PriorityClass', 1),
+            'Global': 'false',
+            'Persistence': 'connection',
+            "UploadFrom": "direct",
+            "DataLength": len(self._content),
+            "RealTimeFlag": "true",
+        })
+        transfer_mimetype_and_name(self, cmd)
         return cmd, self._content
 
 class PutQueueDirectJob(miniFCP.FCPJob):
@@ -85,22 +93,20 @@ class PutQueueDirectJob(miniFCP.FCPJob):
         miniFCP.FCPJob.onMessage(self, msg)
 
     def getFCPCommand(self):
-        cmd = self.makeFCPCommand('ClientPut')
-        cmd.setItem('URI', self._targetURI)
-        cmd.setItem('Verbosity', self._cmdargs.get('Verbosity', -1))
-        cmd.setItem('MaxRetries', self._cmdargs.get('MaxRetries', -1))
-        cmd.setItem('DontCompress', 'false')
-        cmd.setItem('Codecs', DEFAULT_CODEC)
-        cmd.setItem('PriorityClass', self._cmdargs.get('PriorityClass', 4))
-        cmd.setItem('Global', 'true')
-        cmd.setItem('Persistence', 'forever')
-        cmd.setItem("UploadFrom", "direct")
-        cmd.setItem("DataLength", str(len(self._content)))
-        if self._cmdargs.has_key('Mimetype'):
-            cmd.setItem("Metadata.ContentType", self._cmdargs['Mimetype'])
-        cmd.setItem("RealTimeFlag", "true")
-        if self._cmdargs.has_key('TargetFilename'):
-            cmd.setItem("TargetFilename", self._cmdargs['TargetFilename'])
+        cmd = self.makeFCPCommand('ClientPut', {
+            'URI': self._targetURI,
+            'Verbosity': self._cmdargs.get('Verbosity', -1),
+            'MaxRetries': self._cmdargs.get('MaxRetries', -1),
+            'DontCompress': 'false',
+            'Codecs': DEFAULT_CODEC,
+            'PriorityClass': self._cmdargs.get('PriorityClass', 4),
+            'Global': 'true',
+            'Persistence': 'forever',
+            "UploadFrom": "direct",
+            "DataLength": len(self._content),
+            "RealTimeFlag": "true",
+        })
+        transfer_mimetype_and_name(self, cmd)
         return cmd, self._content
 
 class DDATestJob(miniFCP.FCPJob):
@@ -118,10 +124,11 @@ class DDATestJob(miniFCP.FCPJob):
 
     def _startDDATest(self, directory):
         self._JobRunner._registerJob(str(directory), self)
-        cmd = miniFCP.FCPCommand('TestDDARequest')
-        cmd.setItem('Directory', directory)
-        cmd.setItem('WantReadDirectory', 'true')
-        cmd.setItem('WantWriteDirectory', 'false')
+        cmd = miniFCP.FCPCommand('TestDDARequest', {
+            'Directory': directory,
+            'WantReadDirectory': 'true',
+            'WantWriteDirectory': 'false',
+        })
         self._ConnectionRunner.sendCommand(cmd, None)
 
     def _doDDAReply(self, msg):
@@ -135,9 +142,10 @@ class DDATestJob(miniFCP.FCPJob):
             c = f.read()
             f.close()
 
-        cmd = miniFCP.FCPCommand("TestDDAResponse",
-            Directory=dir,
-            ReadContent=c)
+        cmd = miniFCP.FCPCommand("TestDDAResponse", {
+            'Directory': dir,
+            'ReadContent': c,
+        })
         self._ConnectionRunner.sendCommand(cmd, None)
 
     def _doDDAComplete(self, msg):
@@ -169,22 +177,20 @@ class PutQueueFileJob(DDATestJob):
 
     def getFCPCommand(self):
         if not self._fcpcmd:
-            self._fcpcmd = self.makeFCPCommand('ClientPut')
-            self._fcpcmd.setItem('URI', self._targetURI)
-            self._fcpcmd.setItem('Verbosity', self._cmdargs.get('Verbosity', -1))
-            self._fcpcmd.setItem('MaxRetries', self._cmdargs.get('MaxRetries', 3))
-            self._fcpcmd.setItem('DontCompress', 'false')
-            self._fcpcmd.setItem('Codecs', DEFAULT_CODEC)
-            self._fcpcmd.setItem('PriorityClass', self._cmdargs.get('PriorityClass', 4))
-            self._fcpcmd.setItem('Global', 'true')
-            self._fcpcmd.setItem('Persistence', 'forever')
-            self._fcpcmd.setItem("UploadFrom", "disk")
-            self._fcpcmd.setItem("Filename", self._filename)
-            if self._cmdargs.has_key('Mimetype'):
-                self._fcpcmd.setItem("Metadata.ContentType", self._cmdargs['Mimetype'])
-            if self._cmdargs.has_key('TargetFilename'):
-                self._fcpcmd.setItem("TargetFilename", self._cmdargs['TargetFilename'])
-            self._fcpcmd.setItem("RealTimeFlag", "true")
+            self._fcpcmd = self.makeFCPCommand('ClientPut', {
+                'URI': self._targetURI,
+                'Verbosity': self._cmdargs.get('Verbosity', -1),
+                'MaxRetries': self._cmdargs.get('MaxRetries', 3),
+                'DontCompress': 'false',
+                'Codecs': DEFAULT_CODEC,
+                'PriorityClass': self._cmdargs.get('PriorityClass', 4),
+                'Global': 'true',
+                'Persistence': 'forever',
+                "UploadFrom": "disk",
+                "Filename": self._filename,
+                "RealTimeFlag": "true",
+            })
+            transfer_mimetype_and_name(self, self._fcpcmd)
         return self._fcpcmd, None
 
     def _doAgain(self):
@@ -195,9 +201,12 @@ class PutQueueFileJob(DDATestJob):
         f = open(self._filename, 'r')
         c = f.read()
         f.close()
-        self._fcpcmd.setItem("UploadFrom", "direct")
-        self._fcpcmd.setItem("DataLength", str(len(c)))
-        self._fcpcmd.setItem("TargetFilename", self._cmdargs.get('TargetFilename', os.path.basename(self._filename)))
+        self._fcpcmd.items.update({
+            "UploadFrom": "direct",
+            "DataLength": len(c),
+            "TargetFilename": self._cmdargs.get('TargetFilename',
+                                                os.path.basename(self._filename)),
+        })
         self._ConnectionRunner.sendCommand(self._fcpcmd, c)
 
     def onDDATestDone(self, readAllowed, writeAllowed):
@@ -216,9 +225,10 @@ class FCPNode(miniFCP.FCPJobRunner):
             #hack: force fcp logging. useful at this early stage
             self._fcpargs['fcplogger'] = miniFCP.log_stdout()
         self._defaultConnectionRunner = None
-        self._lastWatchGlobal = {}
-        self._lastWatchGlobal['Enabled'] = False
-        self._lastWatchGlobal['VerbosityMask'] = 0
+        self._lastWatchGlobal = {
+            'Enabled': False,
+            'VerbosityMask': 0,
+        }
 
     def _getDefaultConnectionRunner(self):
         if not self._defaultConnectionRunner:
@@ -241,8 +251,8 @@ class FCPNode(miniFCP.FCPJobRunner):
         # TODO check for previuos set and change only if needed
         cmd = miniFCP.FCPCommand('WatchGlobal')
         if Enabled:
-            cmd.setItem('Enabled', 'true')
-            cmd.setItem('VerbosityMask', VerbosityMask)
+            cmd.items['Enabled'] = 'true'
+            cmd.items['VerbosityMask'] = VerbosityMask
         self._getDefaultConnectionRunner().sendCommand(cmd)
 
     def getConfig(self, WithCurrent=False,WithExpertFlag=False):
