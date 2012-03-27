@@ -147,8 +147,13 @@ class FCPIOConnection(object):
             self._sendLine("EndMessage")
 
     def _sendData(self, data):
-        self.log("out: <%s Bytes of data>", len(data))
-        self.socket.sendall(data)
+        if hasattr(data, 'read'):
+            self.log("out: file %r", data)
+            for chunk in iter(lambda:data.read(8192), ''):
+                self.socket.sendall(chunk)
+        else:
+            self.log("out: <%s Bytes of data>", len(data))
+            self.socket.sendall(data)
 
 class FCPConnection(FCPIOConnection):
     """class for low level fcp protocol i/o

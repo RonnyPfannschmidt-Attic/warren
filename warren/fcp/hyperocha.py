@@ -197,17 +197,14 @@ class PutQueueFileJob(DDATestJob):
         self._ConnectionRunner.sendCommand(self._fcpcmd, None)
 
     def _doDirect(self):
-        # TODO stream the file
-        f = open(self._filename, 'r')
-        c = f.read()
-        f.close()
         self._fcpcmd.items.update({
             "UploadFrom": "direct",
             "DataLength": len(c),
             "TargetFilename": self._cmdargs.get('TargetFilename',
                                                 os.path.basename(self._filename)),
         })
-        self._ConnectionRunner.sendCommand(self._fcpcmd, c)
+        with open(self._filename, 'r') as f:
+            self._ConnectionRunner.sendCommand(self._fcpcmd, f)
 
     def onDDATestDone(self, readAllowed, writeAllowed):
         if readAllowed:
