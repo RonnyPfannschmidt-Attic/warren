@@ -302,11 +302,10 @@ class FCPConnectionRunner(Thread):
         finally:
             self._wLock.release();
 
-class FCPJob(Thread):
+class FCPJob(object):
     """abstract class for asynchronous jobs, they may use more then one fcp command and/or interact with the node in a complex manner"""
 
     def __init__(self, identifier=None):
-        Thread.__init__(self)
         self._lastError = None
         self._lastErrorMessage = None
         self._waitEvent = Event()
@@ -360,7 +359,7 @@ class FCPJob(Thread):
                          **kwargs)
         return cmd
 
-    def run(self):
+    def start(self):
         try:
             self.runFCP()
         except Exception, e:
