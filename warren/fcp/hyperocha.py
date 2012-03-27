@@ -214,7 +214,7 @@ class FCPNode(miniFCP.FCPJobRunner):
         self._fcpargs = fcpargs
         if __debug__:
             #hack: force fcp logging. useful at this early stage
-            self._fcpargs['fcplogger'] = miniFCP.FCPLogger()
+            self._fcpargs['fcplogger'] = miniFCP.log_stdout()
         self._defaultConnectionRunner = None
         self._lastWatchGlobal = {}
         self._lastWatchGlobal['Enabled'] = False

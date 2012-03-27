@@ -22,24 +22,19 @@ def _getUniqueId():
     randnum = random.randint( 0, timenum )
     return "id" + str( timenum + randnum )
 
-class FCPLogger(object):
+def log_stdout():
     """log fcp traffic"""
 
-    def __init__(self, filename=None):
-        self.logfile = sys.stdout
+    logfile = sys.stdout
 
-    def write(self, line, *args):
+    def log(line, *args):
         if args:
             line = line % args
-        self.logfile.write(line + '\n')
+        logfile.write(line + '\n')
+    return log
 
-    __call__ = write
-
-class NullLogger(object):
-    def write(self, line, *args):
-        pass
-    
-    __call__ = write
+def no_log(line, *args):
+    pass
 
 #exceptions
 class FCPConnectionRefused(Exception):
@@ -56,7 +51,7 @@ class FCPIOConnection(object):
         host = fcpargs.get('fcphost', DEFAULT_FCP_HOST)
         port = fcpargs.get('fcpport', DEFAULT_FCP_PORT)
         timeout = fcpargs.get('fcptimeout', DEFAULT_FCP_TIMEOUT)
-        self.log = fcpargs.get('fcplogger', NullLogger())
+        self.log = fcpargs.get('fcplogger', no_log)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
         self.socket.settimeout(timeout)
@@ -116,7 +111,7 @@ class FCPIOConnection(object):
 
             #self.log('in: %s', line)
 
-            if (len(line.strip()) == 0):
+            if not line.strip():
                 continue # an empty line, jump over
 
             if line in ['End', 'EndMessage', 'Data']:
@@ -126,6 +121,7 @@ class FCPIOConnection(object):
             # normal 'key=val' pairs left
             k, v = line.split("=", 1)
             items[k] = v
+
         if len(items) > 10:
             self.log('    %d keys', len(items))
         else:
