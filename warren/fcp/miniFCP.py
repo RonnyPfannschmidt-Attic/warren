@@ -126,7 +126,10 @@ class FCPIOConnection(object):
             # normal 'key=val' pairs left
             k, v = line.split("=", 1)
             items[k] = v
-        self.log("    %r", items)
+        if len(items) > 10:
+            self.log('    %d keys', len(items))
+        else:
+            self.log("    %r", items)
         return FCPMessage(messagename, items, endmarker)
 
     def _sendLine(self, line):
